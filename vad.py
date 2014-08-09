@@ -34,14 +34,18 @@ class TimeInterval:
     def length(self):
         return self.end - self.start
 
+    @classmethod
+    def between(cls, start, end):
+        return cls(start.end, end.start)
 
-def _hz_to_index(hz, length, sampleRate):
-    return round(hz * length / sampleRate)
+
+def _hz_to_index(hz, length, sample_rate):
+    return round(hz * length / sample_rate)
 
 
 def _voice_frequency_energy(frame, sample_rate):
     fft_frame = np.fft.rfft(frame)
-    length = len(fft_frame)
+    length = len(frame)  # since fft_frame is twice less
     start_index = _hz_to_index(300, length, sample_rate)
     end_index = _hz_to_index(1000, length, sample_rate)
     sum_energy = 0
@@ -50,9 +54,9 @@ def _voice_frequency_energy(frame, sample_rate):
     return sum_energy
 
 
-def _bytes_to_samples(bytes, bytes_per_frame):
-    return np.array([int.from_bytes(bytes[i:i + bytes_per_frame], "little") for i in
-                     range(0, len(bytes) - bytes_per_frame, bytes_per_frame)])
+def _bytes_to_samples(samples_bytes, bytes_per_frame):
+    return np.array([int.from_bytes(samples_bytes[i:i + bytes_per_frame], "little", signed=True) for i in
+                     range(0, len(samples_bytes) - bytes_per_frame, bytes_per_frame)])
 
 
 def _samples_to_frames(samples, number_of_frames):
@@ -72,21 +76,23 @@ def _decisions_array_to_silence_time_intervals(decisions, frame_length):
             else:
                 time = i * frame_length
                 intervals.append(TimeInterval(time, time + frame_length))
+            is_silence = True
+        else:
+            is_silence = False
     return intervals
 
 
 def get_silence_intervals(path):
-    #constants
-    frame_length = 10  #ms
+    # constants
+    frame_length = 10  # ms
     first_frames_silence = 30
-    read_frames = 100
     threshold_level = 10
     min_frames_speech = 5
     min_frames_silence = 10
 
-    #TODO: make file conversion
+    # TODO: make file conversion
 
-    #open file
+    # open file
     audio = wave.open(path, "rb")
     bytes_per_frame = audio.getsampwidth()
     sample_rate = audio.getframerate()
@@ -95,8 +101,8 @@ def get_silence_intervals(path):
     number_of_frames = audio.getnframes() // samples_per_frame
     current_frame = 0
 
-    #estimating silence energy
-    decisions = [False]*number_of_frames
+    # estimating silence energy
+    decisions = [False] * number_of_frames
     samples_bytes = audio.readframes(first_frames_silence * samples_per_frame)
     current_frame += first_frames_silence
     samples = _bytes_to_samples(samples_bytes, bytes_per_frame)
@@ -107,7 +113,7 @@ def get_silence_intervals(path):
         mean_frequency_energy += _voice_frequency_energy(frame, sample_rate)
     mean_frequency_energy /= first_frames_silence
 
-    #main evaluation
+    # main evaluation
     read_samples = read_frames * samples_per_frame
     while current_frame < number_of_frames:
         if number_of_frames - current_frame < read_frames:
