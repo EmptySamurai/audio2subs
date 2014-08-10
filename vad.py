@@ -11,8 +11,8 @@ class TimeInterval:
 
     @start.setter
     def start(self, value):
-        if self.end < self.start:
-            raise ValueError("Interval end is earlier than start")
+        if self.end < value:
+            raise ValueError("End of the interval is earlier than start")
         self._start = value
 
     @property
@@ -21,13 +21,13 @@ class TimeInterval:
 
     @end.setter
     def end(self, value):
-        if self.end < self.start:
-            raise ValueError("Interval end is earlier than start")
+        if value < self.start:
+            raise ValueError("End of the interval is earlier than start")
         self._end = value
 
     def __init__(self, start, end):
         if end < start:
-            raise ValueError("Interval end is earlier than start")
+            raise ValueError("End of the interval is earlier than start")
         self._start = start
         self._end = end
 
@@ -63,7 +63,7 @@ def _samples_to_frames(samples, number_of_frames):
     return np.split(np.resize(samples, len(samples) - len(samples) % number_of_frames), number_of_frames)
 
 
-def _decisions_array_to_silence_time_intervals(decisions, frame_length):
+def _decisions_to_silence_time_intervals(decisions, frame_length):
     intervals = []
     is_silence = not decisions[0]
     if is_silence:
@@ -146,4 +146,4 @@ def get_silence_intervals(path):
             is_speech = decisions[i]
             start_index = i
 
-    return _decisions_array_to_silence_time_intervals(decisions, frame_length)
+    return _decisions_to_silence_time_intervals(decisions, frame_length)

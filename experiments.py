@@ -20,12 +20,12 @@ def hz_to_index(hz, length, sample_rate):
 
 
 def most_dominant_frequency(frame, sampleRate):
-    max = frame[0]
+    max_value = frame[0]
     index = 0
     for i in range(len(frame)):
         abs_value = abs(frame[i])
-        if abs_value > max:
-            max = abs_value
+        if abs_value > max_value:
+            max_value = abs_value
             index = i
     return index_to_hz(index, len(frame), sampleRate)
 
