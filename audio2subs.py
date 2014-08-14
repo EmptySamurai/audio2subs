@@ -1,8 +1,10 @@
+from tinterval import tinterval
+
 __author__ = 'emptysamurai'
 
 import argparse
 import re
-from vad import TimeInterval, get_silence_intervals
+from vad import get_silence_intervals
 from subrip import SubRip
 from pathlib import PurePath
 
@@ -25,9 +27,9 @@ except OSError as err:
 # process text
 pattern = r"(\S.+?([.!?]|$))(?=\s+|$)"  # divide in sentences
 sentences = re.findall(pattern, text)
-for i in range(len(sentences)):
-    if isinstance(sentences[i], tuple):
-        sentences[i] = sentences[i][0]
+for i, sentence in enumerate(sentences):
+    if isinstance(sentence, tuple):
+        sentences[i] = sentence[0]
 number_of_sentences = len(sentences)
 
 
@@ -41,7 +43,7 @@ intervals = sorted(intervals, key=lambda interval: interval.start)
 #create SubRip
 speech_intervals = [None] * (len(intervals) - 1)
 for i in range(len(intervals) - 1):
-    speech_intervals[i] = TimeInterval.between(intervals[i], intervals[i + 1])
+    speech_intervals[i] = tinterval.between(intervals[i], intervals[i + 1])
 subtitles = SubRip(speech_intervals, sentences)
 if args.subtitles_path is not None:
     path_to_subs = args.subtitles_path

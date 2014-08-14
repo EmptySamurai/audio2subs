@@ -2,41 +2,7 @@ __author__ = 'emptysamurai'
 
 import wave
 import numpy as np
-
-
-class TimeInterval:
-    @property
-    def start(self):
-        return self._start
-
-    @start.setter
-    def start(self, value):
-        if self.end < value:
-            raise ValueError("End of the interval is earlier than start")
-        self._start = value
-
-    @property
-    def end(self):
-        return self._end
-
-    @end.setter
-    def end(self, value):
-        if value < self.start:
-            raise ValueError("End of the interval is earlier than start")
-        self._end = value
-
-    def __init__(self, start, end):
-        if end < start:
-            raise ValueError("End of the interval is earlier than start")
-        self._start = start
-        self._end = end
-
-    def length(self):
-        return self.end - self.start
-
-    @classmethod
-    def between(cls, start, end):
-        return cls(start.end, end.start)
+from tinterval import tinterval
 
 
 def _hz_to_index(hz, length, sample_rate):
@@ -67,7 +33,7 @@ def _decisions_to_silence_time_intervals(decisions, frame_length):
     intervals = []
     is_silence = not decisions[0]
     if is_silence:
-        intervals.append(TimeInterval(0, frame_length))
+        intervals.append(tinterval(0, frame_length))
     for i in range(len(decisions)):
         if not decisions[i]:
             if is_silence:
@@ -75,7 +41,7 @@ def _decisions_to_silence_time_intervals(decisions, frame_length):
                 last.end += frame_length
             else:
                 time = i * frame_length
-                intervals.append(TimeInterval(time, time + frame_length))
+                intervals.append(tinterval(time, time + frame_length))
             is_silence = True
         else:
             is_silence = False

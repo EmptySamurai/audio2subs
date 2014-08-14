@@ -1,5 +1,8 @@
 __author__ = 'emptysamurai'
 
+import re
+from tinterval import tinterval
+
 
 class SubRipElement:
     @property
@@ -26,15 +29,17 @@ class SubRipElement:
     def number(self, value):
         self._number = value
 
-    def __init__(self, interval, text, number):
+    def __init__(self, number, interval, text):
         self._interval = interval
         self._text = text
         self._number = number
 
     def __str__(self):
         subtitle = str(self.number) + "\n"
-        subtitle += self._ms_to_str(self.interval.start) + " --> " + self._ms_to_str(self.interval.end) + "\n"
+        subtitle += self._ms_to_str(self.interval.start) + " ---> " + self._ms_to_str(self.interval.end) + "\n"
         subtitle += self.text
+        if self.text[len(self.text) - 1] != "\n":
+            subtitle += "\n"
         subtitle += "\n"
         return subtitle
 
@@ -56,15 +61,42 @@ class SubRip:
     def elements(self):
         return self._elements
 
-    def __init__(self, intervals, texts):
+    def __init__(self, intervals, texts, numbers=None):
         if len(intervals) != len(texts):
             raise ValueError("Number of intervals must be equal to number of texts")
+        if (numbers is not None) and (len(intervals) != len(numbers)):
+            raise ValueError("Number of intervals must be equal to number of numbers")
         self._elements = [None] * len(intervals)
         for i in range(len(intervals)):
-            self._elements[i] = SubRipElement(intervals[i], texts[i], i)
+            if numbers is None:
+                self._elements[i] = SubRipElement(i + 1, intervals[i], texts[i])
+            else:
+                self._elements[i] = SubRipElement(numbers[i], intervals[i], texts[i])
 
     def __str__(self):
         subtitles = ""
         for subtitle in self._elements:
             subtitles += str(subtitle)
         return subtitles
+
+    @classmethod
+    def parse(cls, text):
+        pattern = r"(?P<number>\d+)\n(?P<from_h>\d+):(?P<from_m>\d+):(?P<from_s>\d+),(?P<from_ms>\d+)\s+-+>\s+(?P<to_h>\d+):(?P<to_m>\d+):(?P<to_s>\d+),(?P<to_ms>\d+)\n(?P<text>(.|\n)*?)(\n{2,}|\n*$)"
+        r = re.compile(pattern)
+        subs_decomposed = [m.groupdict() for m in r.finditer(text)]
+        intervals = [None] * len(subs_decomposed)
+        texts = [None] * len(subs_decomposed)
+        numbers = [0] * len(subs_decomposed)
+        for i, sub in enumerate(subs_decomposed):
+            numbers[i] = int(sub["number"])
+            from_ms = int(sub["from_ms"]) + 1000 * int(sub["from_s"]) + 6000 * int(sub["from_m"]) + 3600000 * int(
+                sub["from_m"])
+            to_ms = int(sub["to_ms"]) + 1000 * int(sub["to_s"]) + 6000 * int(sub["to_m"]) + 3600000 * int(
+                sub["to_m"])
+            intervals[i] = tinterval(from_ms, to_ms)
+            texts[i] = sub["text"]
+        return cls(intervals, texts, numbers)
+
+
+with open("test.srt") as f:
+    print(SubRip.parse(f.read()))
