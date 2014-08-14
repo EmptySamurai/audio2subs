@@ -96,7 +96,3 @@ class SubRip:
             intervals[i] = tinterval(from_ms, to_ms)
             texts[i] = sub["text"]
         return cls(intervals, texts, numbers)
-
-
-with open("test.srt") as f:
-    print(SubRip.parse(f.read()))
