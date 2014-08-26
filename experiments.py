@@ -5,6 +5,7 @@ import math
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.io.wavfile import read, write
+import wave
 
 
 def short_time_energy(frame):
@@ -60,7 +61,10 @@ args = parser.parse_args()
 
 pathToFile = args.audio_path
 (sample_rate, samples) = read(pathToFile)
+channels = wave.open(pathToFile, "rb").getnchannels()
 samples = np.array(samples, dtype="float") / (2 << 16)
+if channels != 1:
+    samples = np.array([np.mean(i) for i in np.split(samples, samples // channels)])
 
 frame_length = 10  # ms
 samples_per_frame = int((sample_rate * frame_length) / 1000)
@@ -129,7 +133,7 @@ for i in range(len(speech_frequency_energy_detection)):
         is_speech = bool(speech_frequency_energy_detection[i])
         start_index = i
 
-#detection based on both energies
+# detection based on both energies
 for i in range(first_frames_silence, len(energy)):
     if frequency_energy[i] / mean_frequency_energy > threshold_level and energy[i] / mean_energy > threshold_level:
         speech_both_energy_detection[i] = 1

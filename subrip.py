@@ -1,7 +1,7 @@
 __author__ = 'emptysamurai'
 
 import re
-from tinterval import tinterval
+from timeinterval import TimeInterval
 
 
 class SubRipElement:
@@ -36,7 +36,7 @@ class SubRipElement:
 
     def __str__(self):
         subtitle = str(self.number) + "\n"
-        subtitle += self._ms_to_str(self.interval.start) + " ---> " + self._ms_to_str(self.interval.end) + "\n"
+        subtitle += self._ms_to_str(self.interval.begin) + " ---> " + self._ms_to_str(self.interval.end) + "\n"
         subtitle += self.text
         if self.text[len(self.text) - 1] != "\n":
             subtitle += "\n"
@@ -53,7 +53,16 @@ class SubRipElement:
         minutes = total_seconds // 60
         total_seconds -= minutes * 60
         milliseconds = int(round(after_point * 1000))
-        return str(hours) + ":" + str(minutes) + ":" + str(total_seconds) + "," + str(milliseconds)
+        return SubRipElement._str_with_zeros(hours, 2) + \
+               ":" + SubRipElement._str_with_zeros(minutes, 2) + \
+               ":" + SubRipElement._str_with_zeros(total_seconds, 2) + \
+               "," + SubRipElement._str_with_zeros(milliseconds, 3)
+
+    @staticmethod
+    def _str_with_zeros(number, length):
+        number_str = str(number)
+        number_str = "0" * (length - len(number_str)) + number_str
+        return number_str
 
 
 class SubRip:
@@ -68,6 +77,9 @@ class SubRip:
             raise ValueError("Number of intervals must be equal to number of numbers")
         self._elements = [None] * len(intervals)
         for i in range(len(intervals)):
+            if i != 0 and intervals[i - 1].begin > intervals[i].begin:
+                raise ValueError("Intervals are unordered. Interval at " + str(i - 1) + " is later than next interval.")
+
             if numbers is None:
                 self._elements[i] = SubRipElement(i + 1, intervals[i], texts[i])
             else:
@@ -79,6 +91,20 @@ class SubRip:
             subtitles += str(subtitle)
         return subtitles
 
+    def find(self, time):
+        index_min = 0
+        index_max = len(self.elements) - 1
+        while index_max >= index_min:
+            index_mid = (index_min + index_max) // 2
+            mid_interval = self.elements[index_mid].interval
+            if mid_interval.contains(time):
+                return self.elements[index_mid]
+            elif mid_interval.is_earlier(time):
+                index_min = index_mid + 1
+            else:
+                index_max = index_mid - 1
+        return None
+
     @classmethod
     def parse(cls, text):
         pattern = r"(?P<number>\d+)\n(?P<from_h>\d+):(?P<from_m>\d+):(?P<from_s>\d+),(?P<from_ms>\d+)\s+-+>\s+(?P<to_h>\d+):(?P<to_m>\d+):(?P<to_s>\d+),(?P<to_ms>\d+)\n(?P<text>(.|\n)*?)(\n{2,}|\n*$)"
@@ -89,10 +115,10 @@ class SubRip:
         numbers = [0] * len(subs_decomposed)
         for i, sub in enumerate(subs_decomposed):
             numbers[i] = int(sub["number"])
-            from_ms = int(sub["from_ms"]) + 1000 * int(sub["from_s"]) + 6000 * int(sub["from_m"]) + 3600000 * int(
-                sub["from_m"])
-            to_ms = int(sub["to_ms"]) + 1000 * int(sub["to_s"]) + 6000 * int(sub["to_m"]) + 3600000 * int(
-                sub["to_m"])
-            intervals[i] = tinterval(from_ms, to_ms)
+            from_ms = int(sub["from_ms"]) + 1000 * int(sub["from_s"]) + 60000 * int(sub["from_m"]) + 3600000 * int(
+                sub["from_h"])
+            to_ms = int(sub["to_ms"]) + 1000 * int(sub["to_s"]) + 60000 * int(sub["to_m"]) + 3600000 * int(
+                sub["to_h"])
+            intervals[i] = TimeInterval(from_ms, to_ms)
             texts[i] = sub["text"]
         return cls(intervals, texts, numbers)

@@ -2,7 +2,7 @@ __author__ = 'emptysamurai'
 
 import wave
 import numpy as np
-from tinterval import tinterval
+from timeinterval import TimeInterval
 
 
 def _hz_to_index(hz, length, sample_rate):
@@ -13,9 +13,9 @@ def _voice_frequency_energy(frame, sample_rate):
     fft_frame = np.fft.rfft(frame)
     length = len(frame)  # since fft_frame is twice less
     start_index = _hz_to_index(300, length, sample_rate)
-    end_index = _hz_to_index(1000, length, sample_rate)
+    end_index = _hz_to_index(1250, length, sample_rate)
     sum_energy = 0
-    for i in range(min(start_index, length / 2), min(end_index + 1, length / 2)):
+    for i in range(min(start_index, length // 2), min(end_index + 1, length // 2)):
         sum_energy += abs(fft_frame[i]) ** 2
     return sum_energy
 
@@ -23,6 +23,13 @@ def _voice_frequency_energy(frame, sample_rate):
 def _bytes_to_samples(samples_bytes, bytes_per_frame):
     return np.array([int.from_bytes(samples_bytes[i:i + bytes_per_frame], "little", signed=True) for i in
                      range(0, len(samples_bytes) - bytes_per_frame, bytes_per_frame)])
+
+
+def _to_mono(samples, channels):
+    if channels == 1:
+        return samples
+    else:
+        return np.array([np.mean(i) for i in np.split(samples, samples // channels)])
 
 
 def _samples_to_frames(samples, number_of_frames):
@@ -33,7 +40,7 @@ def _decisions_to_silence_time_intervals(decisions, frame_length):
     intervals = []
     is_silence = not decisions[0]
     if is_silence:
-        intervals.append(tinterval(0, frame_length))
+        intervals.append(TimeInterval(0, frame_length))
     for i in range(len(decisions)):
         if not decisions[i]:
             if is_silence:
@@ -41,7 +48,7 @@ def _decisions_to_silence_time_intervals(decisions, frame_length):
                 last.end += frame_length
             else:
                 time = i * frame_length
-                intervals.append(tinterval(time, time + frame_length))
+                intervals.append(TimeInterval(time, time + frame_length))
             is_silence = True
         else:
             is_silence = False
@@ -62,7 +69,8 @@ def get_silence_intervals(path):
     audio = wave.open(path, "rb")
     bytes_per_frame = audio.getsampwidth()
     sample_rate = audio.getframerate()
-    samples_per_frame = int((sample_rate * frame_length) / 1000)
+    channels = audio.getnchannels()
+    samples_per_frame = int((sample_rate * frame_length * channels) / 1000)
     read_frames = samples_per_frame * 10
     number_of_frames = audio.getnframes() // samples_per_frame
     current_frame = 0
@@ -71,7 +79,7 @@ def get_silence_intervals(path):
     decisions = [False] * number_of_frames
     samples_bytes = audio.readframes(first_frames_silence * samples_per_frame)
     current_frame += first_frames_silence
-    samples = _bytes_to_samples(samples_bytes, bytes_per_frame)
+    samples = _to_mono(_bytes_to_samples(samples_bytes, bytes_per_frame), channels)
     frames = _samples_to_frames(samples, first_frames_silence)
 
     mean_frequency_energy = 0
@@ -87,7 +95,7 @@ def get_silence_intervals(path):
             read_samples = read_frames * samples_per_frame
 
         samples_bytes = audio.readframes(read_samples)
-        samples = _bytes_to_samples(samples_bytes, bytes_per_frame)
+        samples = _to_mono(_bytes_to_samples(samples_bytes, bytes_per_frame), channels)
         frames = _samples_to_frames(samples, read_frames)
         for frame in frames:
             frequency_energy = _voice_frequency_energy(frame, sample_rate)
@@ -95,7 +103,7 @@ def get_silence_intervals(path):
                 decisions[current_frame] = True
             current_frame += 1
 
-    #removing short intervals
+    # removing short intervals
     is_speech = False
     start_index = 0
     for i in range(len(decisions)):
