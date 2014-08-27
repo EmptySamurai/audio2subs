@@ -1,18 +1,18 @@
 __author__ = 'emptysamurai'
 
-from PySide import QtGui, QtCore
-from srtplayer.subplayer import SubPlayer
 from os.path import expanduser
 from pathlib import PurePath
 import sys
+from PySide import QtGui, QtCore
+from srtplayer_base import SrtPlayer
 
 
-class Player(QtGui.QWidget):
+class PlayerWidget(QtGui.QWidget):
     _SLIDER_UPDATE_TIME = 10
 
     def __init__(self):
-        super(Player, self).__init__()
-        self._player = SubPlayer()
+        super(PlayerWidget, self).__init__()
+        self._player = SrtPlayer()
         self.setAcceptDrops(True)
         self.init_ui()
 
@@ -103,7 +103,7 @@ class Player(QtGui.QWidget):
 
 def main():
     app = QtGui.QApplication(sys.argv)
-    ex = Player()
+    ex = PlayerWidget()
     sys.exit(app.exec_())
 
 

@@ -7,7 +7,7 @@ from math import ceil
 from PySide import QtCore
 
 
-class SubPlayer(QtCore.QObject):
+class SrtPlayer(QtCore.QObject):
     _CHUNK = 1024
 
     text_changed = QtCore.Signal(str)
@@ -51,7 +51,7 @@ class SubPlayer(QtCore.QObject):
         return self._audio is not None
 
     def __init__(self):
-        super(SubPlayer, self).__init__()
+        super(SrtPlayer, self).__init__()
         self._playing = False
         self._device = alsaaudio.PCM()
         self._length = None
