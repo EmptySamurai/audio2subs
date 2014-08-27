@@ -36,7 +36,7 @@ def voice_frequency_energy(frame, sample_rate):
     start_index = hz_to_index(300, length, sample_rate)
     end_index = hz_to_index(1000, length, sample_rate)
     sum_energy = 0
-    for i in range(min(start_index, length / 2), min(end_index + 1, length / 2)):
+    for i in range(min(start_index, math.ceil(length / 2)), min(end_index + 1, math.ceil(length / 2))):
         sum_energy += abs(frame[i]) ** 2
     return sum_energy
 
@@ -59,9 +59,9 @@ parser = argparse.ArgumentParser()
 parser.add_argument("audio_path", help="Path to the audio wave file")
 args = parser.parse_args()
 
-pathToFile = args.audio_path
-(sample_rate, samples) = read(pathToFile)
-channels = wave.open(pathToFile, "rb").getnchannels()
+path_to_file = args.audio_path
+(sample_rate, samples) = read(path_to_file)
+channels = wave.open(path_to_file, "rb").getnchannels()
 samples = np.array(samples, dtype="float") / (2 << 16)
 if channels != 1:
     samples = np.array([np.mean(i) for i in np.split(samples, samples // channels)])

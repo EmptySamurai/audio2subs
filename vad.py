@@ -3,6 +3,7 @@ __author__ = 'emptysamurai'
 import wave
 import numpy as np
 from timeinterval import TimeInterval
+from math import ceil
 
 
 def _hz_to_index(hz, length, sample_rate):
@@ -14,8 +15,9 @@ def _voice_frequency_energy(frame, sample_rate):
     length = len(frame)  # since fft_frame is twice less
     start_index = _hz_to_index(300, length, sample_rate)
     end_index = _hz_to_index(1250, length, sample_rate)
+    upper_bound = ceil(length / 2)
     sum_energy = 0
-    for i in range(min(start_index, length // 2), min(end_index + 1, length // 2)):
+    for i in range(min(start_index, upper_bound), min(end_index + 1, upper_bound)):
         sum_energy += abs(fft_frame[i]) ** 2
     return sum_energy
 

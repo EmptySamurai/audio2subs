@@ -9,6 +9,7 @@ from srtplayer_base import SrtPlayer
 
 class PlayerWidget(QtGui.QWidget):
     _SLIDER_UPDATE_TIME = 10
+    _WINDOW_TITLE = "SrtPlayer"
 
     def __init__(self):
         super(PlayerWidget, self).__init__()
@@ -46,7 +47,7 @@ class PlayerWidget(QtGui.QWidget):
 
         self.setLayout(grid)
 
-        self.setWindowTitle('SrtPlayer')
+        self.setWindowTitle(self._WINDOW_TITLE)
         self.show()
 
     def dragEnterEvent(self, e):
@@ -76,7 +77,7 @@ class PlayerWidget(QtGui.QWidget):
         self._timer_slider.start(self._SLIDER_UPDATE_TIME)
 
     def show_open_dialog(self):
-        file_name = QtGui.QFileDialog.getOpenFileName(self, 'Open file', expanduser("~"), "*.wav")[0]
+        file_name = QtGui.QFileDialog.getOpenFileName(self, "Open file", expanduser("~"), "*.wav")[0]
         self.open_file(file_name)
 
     def open_file(self, file_name):
@@ -93,10 +94,10 @@ class PlayerWidget(QtGui.QWidget):
                 self._player.open(file_name)
             except ValueError as e:
                 self._text_field.setPlainText(str(e))
-                self.setWindowTitle("SrtPlayer - " + "Error")
+                self.setWindowTitle(self._WINDOW_TITLE + " - " + "Error")
             else:
                 self._text_field.setPlainText("")
-                self.setWindowTitle("SrtPlayer - " + file_name)
+                self.setWindowTitle(self._WINDOW_TITLE + " - " + file_name)
         self._play_pause_button.setEnabled(self._player.loaded)
         self._slider.setEnabled(self._player.loaded)
 

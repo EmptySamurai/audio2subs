@@ -11,10 +11,10 @@ if __name__ == "__main__":
 
     # parse arguments
     parser = argparse.ArgumentParser(
-        description="Generates SubRip (srt) subtitles for the given speech audio file and text")
+        description="Generates SubRip (srt) subtitles for the given audio file with speech and text")
     parser.add_argument("audio_path", help="Path to the audio wave file")
     parser.add_argument("text", help="Text or path to the text file")
-    parser.add_argument("-subtitles_path", help="Path to save subtitles")
+    parser.add_argument("subtitles_path", nargs='?', help="Path to save subtitles")
     args = parser.parse_args()
 
     try:
