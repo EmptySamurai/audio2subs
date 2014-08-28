@@ -2,7 +2,6 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/AudioTextSeparation.iml" filepath="$PROJECT_DIR$/.idea/AudioTextSeparation.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/audio2subs.iml" filepath="$PROJECT_DIR$/.idea/audio2subs.iml" />
     </modules>
   </component>

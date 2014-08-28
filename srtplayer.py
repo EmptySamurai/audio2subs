@@ -77,7 +77,7 @@ class PlayerWidget(QtGui.QWidget):
         self._timer_slider.start(self._SLIDER_UPDATE_TIME)
 
     def show_open_dialog(self):
-        file_name = QtGui.QFileDialog.getOpenFileName(self, "Open file", expanduser("~"), "*.wav")[0]
+        file_name = QtGui.QFileDialog.getOpenFileName(self, "Open file", expanduser("~"), "Wave files (*.wav);;SubRip files (*.srt)")[0]
         self.open_file(file_name)
 
     def open_file(self, file_name):

@@ -24,7 +24,7 @@ def _voice_frequency_energy(frame, sample_rate):
 
 def _bytes_to_samples(samples_bytes, bytes_per_frame):
     return np.array([int.from_bytes(samples_bytes[i:i + bytes_per_frame], "little", signed=True) for i in
-                     range(0, len(samples_bytes) - bytes_per_frame, bytes_per_frame)])
+                     range(0, len(samples_bytes), bytes_per_frame)])
 
 
 def _to_mono(samples, channels):
