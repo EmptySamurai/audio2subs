@@ -8,6 +8,7 @@ if __name__ == "__main__":
     from subrip import SubRip
     from pathlib import PurePath
     from timeinterval import TimeInterval
+    import sys
 
     # parse arguments
     parser = argparse.ArgumentParser(
@@ -25,7 +26,7 @@ if __name__ == "__main__":
         text = args.text
 
     # process text
-    pattern = r"(\S.+?([.!?]|$))(?=\s+|$)"  # divide in sentences
+    pattern = r"((\d+|(\S(.|\n)+?))([.!?]|$))(?=\s+|$)"  # divide in sentences
     sentences = re.findall(pattern, text)
     for i, sentence in enumerate(sentences):
         if isinstance(sentence, tuple):
@@ -36,8 +37,10 @@ if __name__ == "__main__":
     # select intervals
     intervals = get_silence_intervals(args.audio_path)
     number_of_intervals = number_of_sentences + 1
-    intervals = sorted(intervals, key=lambda interval: interval.length())
-    intervals = intervals[len(intervals) - number_of_intervals:len(intervals)]
+    if len(intervals) < number_of_intervals:
+        print("Error: not enough intervals")
+        sys.exit(1)
+    intervals = sorted(intervals, key=lambda interval: interval.length, reverse=True)[:number_of_intervals]
     intervals = sorted(intervals, key=lambda interval: interval.begin)
 
     # create SubRip

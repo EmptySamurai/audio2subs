@@ -35,8 +35,9 @@ def voice_frequency_energy(frame, sample_rate):
     length = len(frame) * 2
     start_index = hz_to_index(300, length, sample_rate)
     end_index = hz_to_index(1000, length, sample_rate)
+    upper_bound = len(frame)
     sum_energy = 0
-    for i in range(min(start_index, math.ceil(length / 2)), min(end_index + 1, math.ceil(length / 2))):
+    for i in range(min(start_index, upper_bound), min(end_index + 1, upper_bound)):
         sum_energy += abs(frame[i]) ** 2
     return sum_energy
 
@@ -52,7 +53,10 @@ def spectral_flatness(frame):
     length = len(frame)
     arithmetic_mean /= length
     geometric_mean = math.exp(geometric_mean / length)
-    return 10 * math.log10(geometric_mean / arithmetic_mean)
+    if arithmetic_mean == 0:
+        return 0
+    else:
+        return 10 * math.log10(geometric_mean / arithmetic_mean)
 
 
 parser = argparse.ArgumentParser()

@@ -3,7 +3,6 @@ __author__ = 'emptysamurai'
 import wave
 import numpy as np
 from timeinterval import TimeInterval
-from math import ceil
 
 
 def _hz_to_index(hz, length, sample_rate):
@@ -12,12 +11,12 @@ def _hz_to_index(hz, length, sample_rate):
 
 def _voice_frequency_energy(frame, sample_rate):
     fft_frame = np.fft.rfft(frame)
-    length = len(frame)  # since fft_frame is twice less
+    length = len(frame)
     start_index = _hz_to_index(300, length, sample_rate)
     end_index = _hz_to_index(1250, length, sample_rate)
-    upper_bound = ceil(length / 2)
+    upper_bound = len(fft_frame)
     sum_energy = 0
-    for i in range(min(start_index, upper_bound), min(end_index + 1, upper_bound)):
+    for i in range(min(start_index, upper_bound-1), min(end_index + 1, upper_bound)):
         sum_energy += abs(fft_frame[i]) ** 2
     return sum_energy
 
@@ -58,8 +57,9 @@ def _decisions_to_silence_time_intervals(decisions, frame_length):
 
 
 def get_silence_intervals(path):
-    # constants
+    # initial constants
     frame_length = 10  # ms
+    read_frames = 512
     first_frames_silence = 30
     threshold_level = 10
     min_frames_speech = 5
@@ -73,7 +73,6 @@ def get_silence_intervals(path):
     sample_rate = audio.getframerate()
     channels = audio.getnchannels()
     samples_per_frame = int((sample_rate * frame_length * channels) / 1000)
-    read_frames = samples_per_frame * 10
     number_of_frames = audio.getnframes() // samples_per_frame
     current_frame = 0
 
@@ -91,6 +90,7 @@ def get_silence_intervals(path):
 
     # main evaluation
     read_samples = read_frames * samples_per_frame
+    mean_frequency_energy_zero = mean_frequency_energy == 0
     while current_frame < number_of_frames:
         if number_of_frames - current_frame < read_frames:
             read_frames = number_of_frames - current_frame
@@ -101,8 +101,11 @@ def get_silence_intervals(path):
         frames = _samples_to_frames(samples, read_frames)
         for frame in frames:
             frequency_energy = _voice_frequency_energy(frame, sample_rate)
-            if frequency_energy / mean_frequency_energy > threshold_level:
-                decisions[current_frame] = True
+            if mean_frequency_energy_zero:
+                decisions[current_frame] = bool(frequency_energy)
+            else:
+                if frequency_energy / mean_frequency_energy > threshold_level:
+                    decisions[current_frame] = True
             current_frame += 1
 
     # removing short intervals

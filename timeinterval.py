@@ -28,6 +28,7 @@ class TimeInterval:
         self._begin = begin
         self._end = end
 
+    @property
     def length(self):
         return self.end - self.begin
 

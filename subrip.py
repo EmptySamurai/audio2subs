@@ -107,7 +107,7 @@ class SubRip:
 
     @classmethod
     def parse(cls, text):
-        pattern = r"(?P<number>\d+)\n(?P<from_h>\d+):(?P<from_m>\d+):(?P<from_s>\d+),(?P<from_ms>\d+)\s+-+>\s+(?P<to_h>\d+):(?P<to_m>\d+):(?P<to_s>\d+),(?P<to_ms>\d+)\n(?P<text>(.|\n)*?)(\n{2,}|\n*$)"
+        pattern = r"(?P<number>\d+)\n(?P<from_h>\d+):(?P<from_m>\d+):(?P<from_s>\d+),(?P<from_ms>\d+)\s+-+>\s+(?P<to_h>\d+):(?P<to_m>\d+):(?P<to_s>\d+),(?P<to_ms>\d+)\n(?P<text>(.|\n)*?)(?=\n{2,}\d+\n|\n*$)"
         r = re.compile(pattern)
         subs_decomposed = [m.groupdict() for m in r.finditer(text)]
         intervals = [None] * len(subs_decomposed)

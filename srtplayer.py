@@ -101,6 +101,11 @@ class PlayerWidget(QtGui.QWidget):
         self._play_pause_button.setEnabled(self._player.loaded)
         self._slider.setEnabled(self._player.loaded)
 
+    def closeEvent(self, event):
+        self._player.pause()
+        event.accept()
+
+
 
 def main():
     app = QtGui.QApplication(sys.argv)
