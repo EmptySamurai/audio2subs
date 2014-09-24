@@ -1,14 +1,116 @@
 __author__ = 'emptysamurai'
 
+import argparse
+import re
+from vad import get_silence_intervals
+from subrip import SubRip
+from pathlib import PurePath
+from timeinterval import TimeInterval
+import wave
+from num2words import num2words
+
+
+def _is_character(char):
+    lower = char.lower()
+    return 'a' <= lower <= 'z' or 'а' <= lower <= 'я'
+
+
+def _is_vowel(char):
+    vowels = ('a', 'e', 'i', 'o', 'u', 'а', 'у', 'о', 'ы', 'и', 'э', 'я', 'ю', 'ё', 'е')
+    return char.lower() in vowels
+
+
+def _character_points(char):
+    if _is_character(char):
+        if _is_vowel(char):
+            return 3
+        else:
+            return 1
+    return 0
+
+
+def _sentence_points(sentence):
+    points = 0
+    sentence = _replace_numbers(sentence)
+    for character in sentence:
+        points += _character_points(character)
+    return points
+
+
+def _replace_numbers(string):
+    string = string.replace("$", "dollars")
+    return re.sub(r"\d+", lambda n: num2words(int(n.group(0))), string)
+
+
+def advanced_method(intervals, sentences, audio_length):
+    sentences_points = [_sentence_points(sentence) for sentence in sentences]
+    total_points = sum(sentences_points)
+    audio_length -= sum(interval.length for interval in intervals)
+    average_speed = audio_length / total_points
+
+    result_intervals = [intervals[0]]
+    last_interval = 0
+    for i, sentence_points in enumerate(sentences_points):
+
+        sentence_length = sentence_points * average_speed
+        sentence_start = intervals[last_interval].end
+        sentence_end = sentence_length + sentence_start
+        if i != len(sentences):
+            for i in range(last_interval + 1, len(intervals)):
+                current_interval = intervals[i]
+                if current_interval.contains(sentence_end):
+                    result_intervals.append(current_interval)
+                    last_interval = i
+                    break
+                elif current_interval.is_later(sentence_end):
+                    if current_interval.begin - sentence_end < sentence_end - intervals[
+                                i - 1].end or i == last_interval + 1:
+                        result_intervals.append(current_interval)
+                        last_interval = i
+                        break
+                    else:
+                        result_intervals.append(intervals[i - 1])
+                        last_interval = i - 1
+                        break
+
+    return result_intervals
+
+
+def advanced_method_2(intervals, sentences, audio_length):
+    sentences_points = [_sentence_points(sentence) for sentence in sentences]
+    silence_intervals_length = sum(interval.length for interval in intervals)
+    average_silence_interval_length = silence_intervals_length / len(intervals)
+    audio_length -= silence_intervals_length
+    average_speed = audio_length / sum(sentences_points)
+    sentences_lengths = [average_speed * sentence_points for sentence_points in sentences_points]
+    time_sorted_intervals = sorted(intervals, key=lambda interval: interval.begin)
+    result = [time_sorted_intervals[0]]
+    for sentence_length in sentences_lengths:
+        min_sentence_length = sentence_length * 0.5
+        max_sentence_length = sentence_length * 2
+        longest_interval = None
+        previous_interval = result[-1]
+        for interval in time_sorted_intervals:
+            if interval.is_later(previous_interval.end):
+                sentence_interval_length = TimeInterval.between(previous_interval, interval).length
+                if min_sentence_length < sentence_interval_length < max_sentence_length:
+                    if longest_interval is None or longest_interval.length < interval.length:
+                        longest_interval = interval
+                elif sentence_interval_length >= max_sentence_length:
+                    break
+        if longest_interval is None:
+            end = previous_interval.end + sentence_length
+            if sentence_length > average_silence_interval_length:
+                result.append(TimeInterval(end - average_silence_interval_length, end))
+            else:
+                result.append(TimeInterval(end - sentence_length / 2.5, end))
+        else:
+            result.append(longest_interval)
+    return result
+
+
 if __name__ == "__main__":
 
-    import argparse
-    import re
-    from vad import get_silence_intervals
-    from subrip import SubRip
-    from pathlib import PurePath
-    from timeinterval import TimeInterval
-    import sys
 
     # parse arguments
     parser = argparse.ArgumentParser(
@@ -37,11 +139,14 @@ if __name__ == "__main__":
     # select intervals
     intervals = get_silence_intervals(args.audio_path)
     number_of_intervals = number_of_sentences + 1
-    if len(intervals) < number_of_intervals:
+    """if len(intervals) < number_of_intervals:
         print("Error: not enough intervals")
         sys.exit(1)
     intervals = sorted(intervals, key=lambda interval: interval.length, reverse=True)[:number_of_intervals]
-    intervals = sorted(intervals, key=lambda interval: interval.begin)
+    intervals = sorted(intervals, key=lambda interval: interval.begin)"""
+    audio = wave.open(args.audio_path, 'rb')
+    audio_length = audio.getnframes() / audio.getframerate() / audio.getnchannels() * 1000
+    intervals = advanced_method_2(intervals, sentences, audio_length)
 
     # create SubRip
     speech_intervals = [None] * (len(intervals) - 1)
