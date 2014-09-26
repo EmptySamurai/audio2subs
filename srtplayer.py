@@ -92,7 +92,7 @@ class PlayerWidget(QtGui.QWidget):
         else:
             try:
                 self._player.open(file_name)
-            except ValueError as e:
+            except Exception as e:
                 self._text_field.setPlainText(str(e))
                 self.setWindowTitle(self._WINDOW_TITLE + " - " + "Error")
             else:

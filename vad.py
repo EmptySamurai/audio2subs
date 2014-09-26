@@ -3,6 +3,7 @@ __author__ = 'emptysamurai'
 import wave
 import numpy as np
 from timeinterval import TimeInterval
+import struct
 
 
 def _hz_to_index(hz, length, sample_rate):
@@ -16,14 +17,22 @@ def _voice_frequency_energy(frame, sample_rate):
     end_index = _hz_to_index(1250, length, sample_rate)
     upper_bound = len(fft_frame)
     sum_energy = 0
-    for i in range(min(start_index, upper_bound-1), min(end_index + 1, upper_bound)):
+    for i in range(min(start_index, upper_bound - 1), min(end_index + 1, upper_bound)):
         sum_energy += abs(fft_frame[i]) ** 2
     return sum_energy
 
 
 def _bytes_to_samples(samples_bytes, bytes_per_frame):
-    return np.array([int.from_bytes(samples_bytes[i:i + bytes_per_frame], "little", signed=True) for i in
-                     range(0, len(samples_bytes), bytes_per_frame)])
+    length = len(samples_bytes) // bytes_per_frame
+    if bytes_per_frame == 4:
+        type = 'i'
+    elif bytes_per_frame == 2:
+        type = 'h'
+    elif bytes_per_frame == 1:
+        type = 'c'
+    elif bytes_per_frame == 8:
+        type = 'q'
+    return np.array(struct.unpack("<" + str(length) + type, samples_bytes))
 
 
 def _to_mono(samples, channels):
@@ -59,7 +68,7 @@ def _decisions_to_silence_time_intervals(decisions, frame_length):
 def get_silence_intervals(path):
     # initial constants
     frame_length = 10  # ms
-    read_frames = 512
+    read_frames = 2048
     first_frames_silence = 30
     threshold_level = 10
     min_frames_speech = 5
@@ -74,6 +83,10 @@ def get_silence_intervals(path):
     channels = audio.getnchannels()
     samples_per_frame = int((sample_rate * frame_length * channels) / 1000)
     number_of_frames = audio.getnframes() // samples_per_frame
+
+    if number_of_frames < first_frames_silence:
+        raise ValueError("Audio file should be at least " + str(frame_length * first_frames_silence) + "ms")
+
     current_frame = 0
 
     # estimating silence energy
