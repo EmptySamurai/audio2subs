@@ -25,21 +25,24 @@ def _voice_frequency_energy(frame, sample_rate):
 def _bytes_to_samples(samples_bytes, bytes_per_frame):
     length = len(samples_bytes) // bytes_per_frame
     if bytes_per_frame == 4:
-        type = 'i'
+        int_type = 'i'
     elif bytes_per_frame == 2:
-        type = 'h'
+        int_type = 'h'
     elif bytes_per_frame == 1:
-        type = 'c'
+        int_type = 'c'
     elif bytes_per_frame == 8:
-        type = 'q'
-    return np.array(struct.unpack("<" + str(length) + type, samples_bytes))
+        int_type = 'q'
+    else:
+        raise ValueError("Can't read "+str(bytes_per_frame)+"-byte audio")
+
+    return np.array(struct.unpack("<" + str(length) + int_type, samples_bytes))
 
 
 def _to_mono(samples, channels):
     if channels == 1:
         return samples
     else:
-        return np.array([np.mean(i) for i in np.split(samples, samples // channels)])
+        return np.array(np.mean(i) for i in np.split(samples, samples // channels))
 
 
 def _samples_to_frames(samples, number_of_frames):

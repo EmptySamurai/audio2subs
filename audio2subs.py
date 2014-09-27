@@ -29,11 +29,6 @@ def _character_points(char):
             return 1
     return 0
 
-def _silence_points(char):
-    if char == ' ':
-        return 1
-    if char in (',', ':', '–'):
-        return 1
 
 def _sentence_points(sentence):
     points = 0
@@ -42,11 +37,6 @@ def _sentence_points(sentence):
         points += _character_points(character)
     return points
 
-def _sentence_silence_points(sentence):
-    points = 0
-    for character in sentence:
-        points += _silence_points(character)
-    return points
 
 def _replace_numbers(string):
     string = string.replace("$", "dollars")
@@ -116,8 +106,7 @@ if __name__ == "__main__":
         sys.exit(1)
 
     # process text
-    #pattern = r"((\d+|(\S(.|\n)+?))(…|\.+|[!?]|$))(?=\s+|$|\n+)"  # divide in sentences
-    pattern=r"(\d+|(\S(.|\n)+?))(?=\s+|$|\n+)"
+    pattern = r"((\d+|(\S(.|\n)+?))(…|\.+|[!?]|$))(?=\s+|$|\n+)"  # divide in sentences
     sentences = re.findall(pattern, text)
     for i, sentence in enumerate(sentences):
         if isinstance(sentence, tuple):
