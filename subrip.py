@@ -1,5 +1,3 @@
-__author__ = 'emptysamurai'
-
 import re
 from timeinterval import TimeInterval
 
@@ -122,57 +120,6 @@ class SubRip:
             intervals[i] = TimeInterval(from_ms, to_ms)
             texts[i] = sub["text"]
         return cls(intervals, texts, numbers)
-
-    @classmethod
-    def _parse_new(cls, text):
-        time_pattern = re.compile(
-            r"(?P<from_h>\d+):(?P<from_m>\d+):(?P<from_s>\d+),(?P<from_ms>\d+)\s+-+>\s+(?P<to_h>\d+):(?P<to_m>\d+):(?P<to_s>\d+),(?P<to_ms>\d+)\n")
-        lines = text.splitlines(True)
-        empty_flag = False
-        number_flag = False
-        empty_string = ""
-        number_string = ""
-        numbers = []
-        intervals = []
-        texts = []
-        for line in lines:
-            texts_length_zero = len(texts) == 0
-            if number_flag:
-                match = time_pattern.match(line)
-                if match is not None:
-                    match_dict = match.groupdict()
-                    numbers.append(int(number_string))
-                    from_ms = int(match_dict["from_ms"]) + 1000 * int(match_dict["from_s"]) \
-                              + 60000 * int(match_dict["from_m"]) + 3600000 * int(match_dict["from_h"])
-                    to_ms = int(match_dict["to_ms"]) + 1000 * int(match_dict["to_s"]) \
-                            + 60000 * int(match_dict["to_m"]) + 3600000 * int(match_dict["to_h"])
-                    intervals.append(TimeInterval(from_ms, to_ms))
-                    texts.append("")
-                    empty_flag = False
-                    number_flag = False
-                else:
-                    empty_flag = False
-                    number_flag = False
-                    if not texts_length_zero:
-                        texts[-1] += empty_string + number_string + line
-            elif empty_flag or texts_length_zero:
-                if not number_flag and cls._is_number(line):
-                    number_string = line
-                    number_flag = True
-                else:
-                    empty_flag = False
-                    if not texts_length_zero:
-                        texts[-1] += empty_string + line
-            elif line.strip() == "":
-                empty_flag = True
-                empty_string = line
-            else:
-                empty_flag = False
-                if not texts_length_zero:
-                    texts[-1] += line
-
-        return cls(intervals, texts, numbers)
-
 
     @staticmethod
     def _is_number(string):

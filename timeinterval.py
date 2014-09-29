@@ -1,6 +1,3 @@
-__author__ = 'emptysamurai'
-
-
 class TimeInterval:
     @property
     def begin(self):

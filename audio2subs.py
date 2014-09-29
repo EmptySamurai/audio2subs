@@ -1,5 +1,3 @@
-__author__ = 'emptysamurai'
-
 import argparse
 import re
 from vad import get_silence_intervals
@@ -42,53 +40,7 @@ def _replace_numbers(string):
     string = string.replace("$", "dollars")
     return re.sub(r"\d+", lambda n: num2words(int(n.group(0))), string)
 
-
-def _advanced_method(intervals, sentences, audio_length):
-    sentences_points = [_sentence_points(sentence) for sentence in sentences]
-    total_points = sum(sentences_points)
-    audio_length -= sum(interval.length for interval in intervals)
-    average_speed = audio_length / total_points
-
-    result_intervals = [intervals[0]]
-    last_interval = 0
-    for i, sentence_points in enumerate(sentences_points):
-
-        sentence_length = sentence_points * average_speed
-        sentence_start = intervals[last_interval].end
-        sentence_end = sentence_length + sentence_start
-        if i != len(sentences):
-            for i in range(last_interval + 1, len(intervals)):
-                current_interval = intervals[i]
-                if current_interval.contains(sentence_end):
-                    result_intervals.append(current_interval)
-                    last_interval = i
-                    break
-                elif current_interval.is_later(sentence_end):
-                    if current_interval.begin - sentence_end < sentence_end - intervals[
-                                i - 1].end or i == last_interval + 1:
-                        result_intervals.append(current_interval)
-                        last_interval = i
-                        break
-                    else:
-                        result_intervals.append(intervals[i - 1])
-                        last_interval = i - 1
-                        break
-
-    return result_intervals
-
-
-def _old_method(intervals, sentences):
-    number_of_intervals = len(sentences) + 1
-    if len(intervals) < number_of_intervals:
-        print("Error: not enough intervals")
-        sys.exit(1)
-    sorted_intervals = sorted(intervals, key=lambda interval: interval.length, reverse=True)[:number_of_intervals]
-    sorted_intervals = sorted(sorted_intervals, key=lambda interval: interval.begin)
-    return sorted_intervals
-
-
 if __name__ == "__main__":
-
 
     # parse arguments
     parser = argparse.ArgumentParser(

@@ -32,6 +32,7 @@ class SrtPlayer(QtCore.QObject):
                 play = self._playing
                 self.pause()
                 self._audio.setpos(pos)
+                self._update_subs()
                 if play:
                     self.play()
             else:
@@ -71,6 +72,10 @@ class SrtPlayer(QtCore.QObject):
         if self._audio_thread is not None:
             self._audio_thread.join()
 
+    def close(self):
+        self.pause()
+        self._device.close()
+
     def play_pause(self):
         if self._playing:
             self.pause()
@@ -84,11 +89,7 @@ class SrtPlayer(QtCore.QObject):
             if length != self._CHUNK:
                 data += b"\x00" * (self._CHUNK - length) * self._audio.getsampwidth()
             self._device.write(data)
-            if self._subs is not None:
-                sub = self._subs.find(self.time)
-                if sub is not self._sub:
-                    self._sub = sub
-                    self._emit_sub_changed_new_thread()
+            self._update_subs()
             data = self._audio.readframes(self._CHUNK)
         if data == '':
             self._playing = False
@@ -143,3 +144,9 @@ class SrtPlayer(QtCore.QObject):
     def _emit_sub_changed_new_thread(self):
         threading.Thread(target=self._emit_sub_changed).start()
 
+    def _update_subs(self):
+        if self._subs is not None:
+            sub = self._subs.find(self.time)
+            if sub is not self._sub:
+                self._sub = sub
+                self._emit_sub_changed_new_thread()

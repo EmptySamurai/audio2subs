@@ -1,20 +1,44 @@
-import wave
+__author__ = 'emptysamurai'
+
+# Just bad VAD for demonstration
+# http://www.eurasip.org/Proceedings/Eusipco/Eusipco2009/contents/papers/1569192958.pdf
+
+
+import math
 import numpy as np
-from timeinterval import TimeInterval
+import wave
 import struct
+from timeinterval import TimeInterval
 
 
-def _hz_to_index(hz, length, sample_rate):
-    return round(hz * length / sample_rate)
+def _index_to_hz(index, length, sample_rate):
+    return index * sample_rate / length
 
 
-def _voice_frequency_energy(frame, sample_rate):
-    fft_frame = np.fft.rfft(frame)
-    length = len(frame)
-    start_index = _hz_to_index(300, length, sample_rate)
-    end_index = _hz_to_index(3000, length, sample_rate)
-    upper_bound = len(fft_frame)
-    return sum(abs(fft_frame[i]) ** 2 for i in range(min(start_index, upper_bound-1), min(end_index + 1, upper_bound)))
+def _frame_energy(frame):
+    return sum(x ** 2 for x in frame)
+
+
+def _spectral_flatness(fft_frame):
+    arithmetic_mean = 0
+    geometric_mean = 0
+    for x in fft_frame:
+        power = abs(x) ** 2
+        if power != 0:
+            arithmetic_mean += power
+            geometric_mean += math.log(power)
+    length = len(fft_frame)
+    arithmetic_mean /= length
+    geometric_mean = math.exp(geometric_mean / length)
+    if arithmetic_mean == 0:
+        return 0
+    else:
+        return 10 * math.log10(geometric_mean / arithmetic_mean)
+
+
+def _most_dominant_frequency(fft_frame, sample_rate):
+    index = max(enumerate(fft_frame), key=lambda x: abs(x[1]))[0]
+    return _index_to_hz(index, len(fft_frame), sample_rate)
 
 
 def _bytes_to_samples(samples_bytes, bytes_per_frame):
@@ -28,7 +52,7 @@ def _bytes_to_samples(samples_bytes, bytes_per_frame):
     elif bytes_per_frame == 8:
         int_type = 'q'
     else:
-        raise ValueError("Can't read "+str(bytes_per_frame)+"-byte audio")
+        raise ValueError("Can't read " + str(bytes_per_frame) + "-byte audio")
 
     return np.array(struct.unpack("<" + str(length) + int_type, samples_bytes))
 
@@ -68,9 +92,11 @@ def get_silence_intervals(path):
     frame_length = 10  # ms
     read_frames = 2048
     first_frames_silence = 30
-    threshold_level = 10
     min_frames_speech = 5
     min_frames_silence = 10
+    energy_prim_thresh = 40
+    f_prim_thresh = 185
+    sf_prim_thresh = 5
 
     # open file
     audio = wave.open(path, "rb")
@@ -84,22 +110,19 @@ def get_silence_intervals(path):
         raise ValueError("Audio file should be at least " + str(frame_length * first_frames_silence) + "ms")
 
     current_frame = 0
-
-    # estimating silence energy
     decisions = [False] * number_of_frames
-    samples_bytes = audio.readframes(first_frames_silence * samples_per_frame)
-    current_frame += first_frames_silence
-    samples = _to_mono(_bytes_to_samples(samples_bytes, bytes_per_frame), channels)
-    frames = _samples_to_frames(samples, first_frames_silence)
 
-    mean_frequency_energy = 0
-    for frame in frames:
-        mean_frequency_energy += _voice_frequency_energy(frame, sample_rate)
-    mean_frequency_energy /= first_frames_silence
+    min_e = None
+    min_f = None
+    min_sf = None
 
+    thresh_e = 0
+    thresh_f = 0
+    thresh_sf = 0
+
+    silence_count = 0
     # main evaluation
     read_samples = read_frames * samples_per_frame
-    mean_frequency_energy_zero = mean_frequency_energy == 0
     while current_frame < number_of_frames:
         if number_of_frames - current_frame < read_frames:
             read_frames = number_of_frames - current_frame
@@ -109,12 +132,50 @@ def get_silence_intervals(path):
         samples = _to_mono(_bytes_to_samples(samples_bytes, bytes_per_frame), channels)
         frames = _samples_to_frames(samples, read_frames)
         for frame in frames:
-            frequency_energy = _voice_frequency_energy(frame, sample_rate)
-            if mean_frequency_energy_zero:
-                decisions[current_frame] = bool(frequency_energy)
+            e = _frame_energy(frame)
+            frame_fft = np.fft.rfft(frame)
+            f = _most_dominant_frequency(frame_fft, sample_rate)
+            sfm = _spectral_flatness(frame_fft)
+            if current_frame < first_frames_silence:
+                if min_e is None:
+                    min_e = e
+                else:
+                    min_e = min(e, min_e)
+
+                if min_f is None:
+                    min_f = f
+                else:
+                    min_f = min(f, min_f)
+
+                if min_sf is None:
+                    min_sf = sfm
+                else:
+                    min_sf = min(sfm, min_sf)
+
+                decisions[current_frame] = False
+
             else:
-                if frequency_energy / mean_frequency_energy > threshold_level:
+                thresh_e = energy_prim_thresh * math.log(min_e)
+                thresh_f = f_prim_thresh
+                thresh_sf = sf_prim_thresh
+
+                counter = 0
+                if e - min_e >= thresh_e:
+                    counter += 1
+
+                if f - min_f >= thresh_f:
+                    counter += 1
+
+                if sfm - min_sf >= thresh_sf:
+                    counter += 1
+
+                if counter > 1:
                     decisions[current_frame] = True
+                else:
+                    decisions[current_frame] = False
+                    min_e = (silence_count * min_e + e) / (silence_count + 1)
+                    silence_count += 1
+
             current_frame += 1
 
     # removing short intervals
